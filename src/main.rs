@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::Json,
-    routing::get,
+    routing::{get, post},
     serve, Router,
 };
 use dotenv::dotenv;
@@ -28,8 +28,10 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/get-tasks", get(get_tasks))
         .route("/mark-complete/:id", get(mark_complete))
         .route("/mark-incomplete/:id", get(mark_incomplete))
+        .route("/add-task/:name", post(add_task))
+        .route("/delete-task/:id", post(delete_task))
         .with_state(pool);
-    let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
     println!("Running on http://localhost:3000");
     serve(listener, app).await.unwrap();
 
@@ -98,5 +100,26 @@ async fn mark_incomplete(State(pool): State<PgPool>, Path(id): Path<i32>) -> Sta
     .execute(&pool)
     .await
     .unwrap();
+    StatusCode::OK
+}
+
+async fn add_task(State(pool): State<PgPool>, Path(name): Path<String>) -> StatusCode {
+    sqlx::query!(
+        r#"
+            INSERT INTO todo_schema.todo_list(description) VALUES ($1)
+        "#,
+        name
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    StatusCode::OK
+}
+
+async fn delete_task(State(pool): State<PgPool>, Path(id): Path<i32>) -> StatusCode {
+    sqlx::query!(r#"DELETE FROM todo_schema.todo_list WHERE id = $1"#, id)
+        .execute(&pool)
+        .await
+        .unwrap();
     StatusCode::OK
 }
