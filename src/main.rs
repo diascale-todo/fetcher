@@ -117,7 +117,8 @@ async fn add_task(State(pool): State<PgPool>, Path(name): Path<String>) -> Statu
 }
 
 async fn delete_task(State(pool): State<PgPool>, Path(id): Path<i32>) -> StatusCode {
-    sqlx::query!(r#"DELETE FROM todo_schema.todo_list WHERE id = $1"#, id)
+    sqlx::query(r#"DELETE FROM todo_schema.todo_list WHERE id = $1"#)
+        .bind(id)
         .execute(&pool)
         .await
         .unwrap();
