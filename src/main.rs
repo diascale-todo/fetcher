@@ -50,7 +50,7 @@ async fn ping() -> Json<Ping> {
     })
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 struct Task {
     id: i32,
     description: String,
@@ -58,10 +58,10 @@ struct Task {
 }
 
 async fn get_tasks(State(pool): State<PgPool>) -> Json<Vec<Task>> {
-    let rows = sqlx::query!(
+    let rows: Vec<Task> = sqlx::query_as(
         r#"
             SELECT id, description, completed FROM todo_schema.todo_list ORDER BY id
-        "#
+        "#,
     )
     .fetch_all(&pool)
     .await
@@ -71,19 +71,19 @@ async fn get_tasks(State(pool): State<PgPool>) -> Json<Vec<Task>> {
             .map(|task| Task {
                 id: task.id,
                 description: task.description,
-                completed: task.completed.unwrap(),
+                completed: task.completed,
             })
             .collect(),
     )
 }
 
 async fn mark_complete(State(pool): State<PgPool>, Path(id): Path<i32>) -> StatusCode {
-    sqlx::query!(
+    sqlx::query(
         r#"
             UPDATE todo_schema.todo_list SET completed = TRUE WHERE id = $1
         "#,
-        id
     )
+    .bind(id)
     .execute(&pool)
     .await
     .unwrap();
@@ -91,12 +91,12 @@ async fn mark_complete(State(pool): State<PgPool>, Path(id): Path<i32>) -> Statu
 }
 
 async fn mark_incomplete(State(pool): State<PgPool>, Path(id): Path<i32>) -> StatusCode {
-    sqlx::query!(
+    sqlx::query(
         r#"
             UPDATE todo_schema.todo_list SET completed = FALSE WHERE id = $1
         "#,
-        id
     )
+    .bind(id)
     .execute(&pool)
     .await
     .unwrap();
@@ -104,12 +104,12 @@ async fn mark_incomplete(State(pool): State<PgPool>, Path(id): Path<i32>) -> Sta
 }
 
 async fn add_task(State(pool): State<PgPool>, Path(name): Path<String>) -> StatusCode {
-    sqlx::query!(
+    sqlx::query(
         r#"
             INSERT INTO todo_schema.todo_list(description) VALUES ($1)
         "#,
-        name
     )
+    .bind(name)
     .execute(&pool)
     .await
     .unwrap();
