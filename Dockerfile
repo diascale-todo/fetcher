@@ -14,6 +14,15 @@ RUN apt-get update && apt-get install -y \
 # Copy the built binary from the builder stage
 COPY --from=builder /usr/local/cargo/bin/fetcher /usr/local/bin/fetcher
 
+# Copy the entrypoint script into the image
+COPY entrypoint.sh /app/entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+# Set the entrypoint to the custom script
+ENTRYPOINT ["/app/entrypoint.sh"]
+
 # For debugging
 # CMD ["sleep 3600"]
 # Set the entrypoint to the fetcher binary
